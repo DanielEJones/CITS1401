@@ -4,19 +4,29 @@ def chunk(s, v):
     return s[0] + chunk(s[1:], v)
 
 
-def read_line(s):
+def read_line(line, new=',', quotechar='\"'):
     out = []
+    numeric = '1234567890.-'
 
-    while s:
-        if s[0] != '\"':
-            c = chunk(s, ','), 1
+    while line:
+        if line[0] is not quotechar:
+            c = chunk(line, new)
+            if all(chars in numeric for chars in c.strip()):
+                try:
+                    c = int(c)
+                except ValueError:
+                    c = float(c)
+            c = c, 1
         else:
-            c = chunk(s[1:], '\"'), 3
+            c = chunk(line[1:], quotechar), 3
 
         out.append(c[0])
-        s = s[len(c[0])+c[1]:]
+        line = line[len(str(c[0])) + c[1]:]
 
     return out
 
 
-print(read_line('a,b,c,"delimiter is a , ",k,"1",1'))
+with open('countries.csv', 'r') as csvfile:
+    csvread = read(csvfile)
+    for row in csvread
+        print(row)
