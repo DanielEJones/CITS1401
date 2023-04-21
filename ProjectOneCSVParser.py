@@ -175,9 +175,14 @@ def main(file: str, target_region: str):
             items = (set_types(column) for column in line)
             current = {header[pos]: item for pos, item in enumerate(items)}
 
-            # Set all the necessary variables
-            name, population, net_change, area, region = current['Name'], current['Population(2020)'], \
-                current['Net Change'], current['Land Area'], current['Regions']
+            # Set all the necessary variables:
+            try:
+                # Attempt to use the default categories
+                name, population, net_change, area, region = current['Name'], current['Population(2020)'], \
+                    current['Net Change'], current['Land Area'], current['Regions']
+            except KeyError:
+                # If the default categories don't exist, read from left to right
+                name, population, _, net_change, area, region = [item for item in items]
 
             if region == target_region:
                 # add pop/area to their respective dictionary, then add that value to the total
@@ -214,7 +219,7 @@ def main(file: str, target_region: str):
 
         # Both pop_st_d and correlation use safe_division, which returns a value should the result be undefined.
         # This means that should something strange happen (one country in region, all countries have same pop/area)
-        # The function will still return an output. In this case it will return 0, as that is the logically correct
+        # the function will still return an output. In this case it will return 0, as that is the logically correct
         # interpretation for all countries being identical.
         population_st_d = safe_division(pop_diff, len(populations) - 1) ** 0.5
         correlation = safe_division(pop_area_diff, (pop_diff * area_diff) ** 0.5)
