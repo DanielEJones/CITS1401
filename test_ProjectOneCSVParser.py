@@ -42,7 +42,7 @@ class TestBufferedReader(TestCase):
             file.seek(0)
             expected = []
             for line in file.readlines():
-                expected.append([set_types(item.strip('\"')) for item in line.strip().split(',')])
+                expected.append([item.strip('\"') for item in line.strip().split(',')])
             self.assertTrue(b == expected)
 
     def testMain(self):
