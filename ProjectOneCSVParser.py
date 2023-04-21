@@ -223,7 +223,3 @@ def main(file: str, target_region: str):
 
         # Return the outputs. We are done here :D
         return max_min, [average_population, population_st_d], sorted_densities, correlation
-
-
-if __name__ == '__main__':
-    print(main('countries.csv', 'Africa'))
