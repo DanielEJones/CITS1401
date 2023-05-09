@@ -1,0 +1,31 @@
+1.  Needs to be able to return correct data for the region specified
+
+    1.1.    Inputs
+            i.  Need to extract data from a CSV file. The following is need, and will always be present
+                >   Name
+                >   Population
+                >   Net Change
+                >   Land Area
+                >   Region
+            ii. Countries with invalid data should not be included, eg
+                >   Non-string names / regions
+                >   Non-integer population / net change / land area
+                >   Missing Data
+                >   Negative or Zero population or land area
+
+    1.2.    Processing
+            i.  Need to store input data
+                >   Find headers within file, store index it appears at
+                >   Store country data in a way that allows easy access to data
+            ii. Create statistical data
+                >   Standard Error and Cosine Similarity for the regions
+                >   Rank and Percentage of Region Pop. for each Country
+
+    1.3.    Outputs
+            i.  First output should be a dictionary mapping a region to statistical data
+            ii. Second output should be a dictionary mapping regions to a dictionary of countries and data
+            iii.Countries should be ranked by population > density > name
+            iv. All Floats should be rounded to 4dp
+
+2.  Must not import any packages
+3.  Must be readable and not terribly inefficient

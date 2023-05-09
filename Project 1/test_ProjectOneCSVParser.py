@@ -1,5 +1,5 @@
 from unittest import TestCase
-from ProjectOneCSVParser import BufferedReader, set_types, csv_read, main
+from ProjectOneCSVParser import BufferedReader, csv_read, main
 import io
 
 
@@ -46,7 +46,7 @@ class TestBufferedReader(TestCase):
             self.assertTrue(b == expected)
 
     def testMain(self):
-        b = main('countries.csv', 'Africa')
+        b = main('Project 1/countries.csv', 'Africa')
         expected = (['Western Sahara', 'Seychelles'],
                     [291620.6667, 239936.4497],
                     [['Mayotte', 727.5067], ['Sao Tome & Principe', 228.2906],
