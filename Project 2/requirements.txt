@@ -1,7 +1,7 @@
 1.  Needs to be able to return correct data for the region specified
 
     1.1.    Inputs
-            i.  Need to extract data from a CSV file. The following is need, and will always be present
+            i.  Need to extract data from a CSV file. The following is need, and will always be present     :)
                 >   Name
                 >   Population
                 >   Net Change
