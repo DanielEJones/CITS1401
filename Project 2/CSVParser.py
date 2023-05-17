@@ -34,7 +34,6 @@ class Country:
     POPULATION: int
     NET_CHANGE: int
     LAND_AREA: int
-    REGION: str
 
     def __init__(self, data: list[str], headers: tuple[int, ...]):
         self.NAME, self.POPULATION, self.NET_CHANGE, self.LAND_AREA, self.REGION = (data[i] for i in headers)
@@ -51,12 +50,47 @@ class Country:
         return self._data
 
 
+class Region:
+
+    NAME: str
+    COUNTRIES: list[Country]
+
+    def __init__(self, name: str):
+        self.NAME = name
+        self.COUNTRIES = []
+
+    def __repr__(self):
+        return f'{self.COUNTRIES}'
+
+    def append(self, country: Country):
+        self.COUNTRIES.append(country)
+
+    @property
+    def population(self) -> int:
+        return sum(country.POPULATION for country in self.COUNTRIES)
+
+    @property
+    def land_area(self) -> int:
+        return sum(country.LAND_AREA for country in self.COUNTRIES)
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    return sum(an * bn for an, bn in zip(a, b)) / (sum(an ** 2 for an in a) * sum(bn ** 2 for bn in b)) ** 0.5
+
+
+def standard_error(mean: float, items: list[float]) -> float:
+    result = (sum((x - mean) ** 2 for x in items) / (len(items) - 1)) ** 0.5
+    return result / len(items) ** 0.5
+
+
 class CSVCountryHandler:
 
+    _regions: dict[str: Region]
     _countries: list[Country]
     _header_indexes: tuple[int, ...]
 
     def __init__(self, expected_headers: tuple[str, ...]):
+        self._regions = {}
         self._countries = []
         self._headers = expected_headers
 
@@ -84,16 +118,33 @@ class CSVCountryHandler:
             raise ValueError('Row contains missing data')
 
         data = [self._type_data(item) for item in data]
-        c = Country(data, self._header_indexes)
+        new_country = Country(data, self._header_indexes)
 
-        if not self._country_is_valid(c, (str, int, int, int, str)):
+        if not self._country_is_valid(new_country, (str, int, int, int, str)):
             raise ValueError('Type Mismatch')
 
-        self._countries.append(c)
+        if new_country.REGION not in self._regions:
+            self._regions[new_country.REGION] = Region(new_country.REGION)
+        self._regions[new_country.REGION].append(new_country)
 
     def on_finish(self) -> [dict, dict]:
-        print('\n'.join(f'{country}' for country in sorted(self._countries, key=Country.rank)))
-        return {}, {}
+        regions, stats = {}, {}
+        for region in self._regions.values():
+
+            countries = sorted(region.COUNTRIES, key=Country.rank)
+            region_data = {}
+            land, pop = [], []
+
+            for pos, country in enumerate(countries, 1):
+
+                land.append(country.LAND_AREA)
+                pop.append(country.POPULATION)
+                region_data[country.NAME] = [country.POPULATION, country.NET_CHANGE, (country.POPULATION / region.population) * 100, (country.POPULATION / country.LAND_AREA), pos]
+
+            mean = sum(pop) / len(pop)
+            stats[region.NAME] = [standard_error(mean, pop), cosine_similarity(land, pop)]
+            regions[region.NAME] = region_data
+        return stats, regions
 
 
 # Covered by on_header() method in "CSVCountryHandler
@@ -115,18 +166,12 @@ def main(file):
         handler.on_header(reader.headers)
         for country in reader:
             handler.on_row(country)
-        _, __ = handler.on_finish()
+        o1, o2 = handler.on_finish()
 
-    stats = {'northern america': [80089583.56, 0.7841]}
-    northern_america_data = {
-        'united states': [331002651, 1937734, 89.7357, 36.1854, 1],
-        'canada': [37742154, 331107, 10.232, 4.1504, 2],
-        'bermuda': [62278, -228, 0.0169, 1245.56, 3],
-        'greenland': [56770, 98, 0.0154, 0.1383, 4]
-    }
-    region_data = {'northern america': northern_america_data}
-    return stats, region_data
+    return o1, o2
 
 
 if __name__ == '__main__':
-    main('Countries.csv')
+    m, n = main('Countries.csv')
+    print(n['Northern America'])
+
