@@ -173,5 +173,5 @@ def main(file):
 
 if __name__ == '__main__':
     m, n = main('Countries.csv')
-    print(n['Northern America'])
+    print(n['Europe'])
 
