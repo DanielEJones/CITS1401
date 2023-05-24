@@ -1,3 +1,29 @@
+def round_output(places: int):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            def round_through(items):
+
+                def round_(float_):
+                    return round(float_, places) if isinstance(float_, float) else float_
+
+                def is_list(item):
+                    return type(item) in (list, tuple, dict)
+
+                def round_list(data):
+                    return type_(round_(item) if not is_list(item) else round_through(item) for item in data)
+
+                def round_dict(dic):
+                    return {key: round_(val) if not is_list(val) else round_through(val) for key, val in dic.items()}
+
+                type_ = type(items)
+                return round_list(items) if type_ in (list, tuple) else round_dict(items)
+
+            func_out = func(*args, **kwargs)
+            return round_through(func_out)
+        return wrapper
+    return decorator
+
+
 class Country:
     _name: str
     _region: str
@@ -46,6 +72,7 @@ class RegionStatCalculator:
 
 
 class Region:
+
     _name: str
     _land_area: int
     _population: int
@@ -62,18 +89,18 @@ class Region:
         self._countries.append(country)
 
     @property
-    def land_area(self):
+    def land_area(self) -> int:
         return self._land_area
 
     @property
-    def population(self):
+    def population(self) -> int:
         return self._population
 
     @property
-    def number_of_countries(self):
+    def number_of_countries(self) -> int:
         return len(self._countries)
 
-    def calculate(self, *functions: type[RegionStatCalculator]):
+    def calculate(self, *functions: type[RegionStatCalculator]) -> any:
         funcs: tuple[RegionStatCalculator] = tuple(func() for func in functions)
         for country in self._countries:
             for func in funcs:
@@ -83,7 +110,7 @@ class Region:
 
 class PopulationStandardError(RegionStatCalculator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._length, self._total_pop = 0, 0
         self._populations = []
 
@@ -101,7 +128,7 @@ class PopulationStandardError(RegionStatCalculator):
 
 class PopulationAreaSimilarity(RegionStatCalculator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._land_population_product, self._land_squared, self._population_squared = 0, 0, 0
 
     def visit(self, country: Country) -> None:
@@ -115,7 +142,7 @@ class PopulationAreaSimilarity(RegionStatCalculator):
 
 class CountryDictionary(RegionStatCalculator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._countries = []
         self._total_pop = 0
 
@@ -132,9 +159,20 @@ class CountryDictionary(RegionStatCalculator):
         }
 
 
-if __name__ == '__main__':
+@round_output(places=4)
+def main(*funcs):
     r = Region('Europe')
-    r.append(Country('Britain', 'Europe', 100, 100, 0))
-    r.append(Country('Norway', 'Europe', 50, 99, 0))
-    sim, error, dic = r.calculate(PopulationAreaSimilarity, PopulationStandardError, CountryDictionary)
-    print(f'{[sim, error]}\n{dic}')
+    r.append(Country('Germany', 'Europe', 348_560, 83_783_942, 266_897))
+    r.append(Country('United Kingdom', 'Europe', 241_930, 67_886_011, 355_839))
+    r.append(Country('Norway', 'Europe', 365_268, 5_421_241, 42_384))
+    r.append(Country('Spain', 'Europe', 498_800, 46_754_778, 18_002))
+    r.append(Country('France', 'Europe', 547_557, 65_273_511, 143_783))
+    r.append(Country('Russia', 'Europe', 16_376_870, 145_934_462, 62_206))
+    r.append(Country('Italy', 'Europe', 294_140, 60_461_826, -88_249))
+    return r.calculate(*funcs)
+
+
+if __name__ == '__main__':
+    sim, err, diction = main(PopulationAreaSimilarity, PopulationStandardError, CountryDictionary)
+    print([sim, err])
+    print(diction)

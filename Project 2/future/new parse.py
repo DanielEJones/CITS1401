@@ -256,7 +256,7 @@ class CSVCountryHandler:
         for header in self._headers:
             item = set_type(row[header.index])
             if not header.validate(item):
-                raise ValueError(f'Bad Types: {header.name}: {item}, was expecting {header._type}')
+                raise ValueError(f'Bad Types: ({header.name}: {item}), was expecting {header._type}')
             extracted.append(item)
         return tuple(extracted)
 

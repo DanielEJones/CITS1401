@@ -39,8 +39,7 @@ class BufferedStream(DataStream):
             self._fill_buffer()
         if self._buffer_is_empty():
             raise StopIteration
-        char = self._buffer[0]
-        self._buffer = self._buffer[1:]
+        char = self._buffer.pop(0)
         return char
 
     def _fill_buffer(self) -> None:
