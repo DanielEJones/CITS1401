@@ -4,13 +4,19 @@ class Country:
     # A country has the following attributes. Underscore suggests that they are not to be accessed from outside instance
     _name: str
     _region: str
-    _land_area: int
+    _land_area: float
     _population: int
     _net_change: int
 
-    def __init__(self, name: str, region: str, land_area: int, population: int, net_change: int) -> None:
+    def __init__(self, name: str, region: str, land_area: float, population: int, net_change: int) -> None:
         self._name, self._region, self._land_area, self._population, self._net_change = \
             name, region, land_area, population, net_change
+
+    def __eq__(self, other) -> bool:
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     # The property decorator means that the attributes can be accessed as country.name rather than .name()
     # It also means that these properties are read only, ensuring that the country is not changed after creation.
@@ -23,7 +29,7 @@ class Country:
         return self._region.lower()
 
     @property
-    def land_area(self) -> int:
+    def land_area(self) -> float:
         return self._land_area
 
     @property
@@ -66,6 +72,8 @@ class PopulationStandardError(RegionStatCalculator):
         self._length += 1
 
     def calculate(self) -> float:
+        if self._length < 2:
+            return 0
         mean = self._total_pop / self._length
         mean_differences = (population - mean for population in self._populations)
         standard_deviation = sum(x ** 2 for x in mean_differences) / (self._length - 1)
@@ -114,39 +122,31 @@ class Region:
     """Representation of a region. Has a name, a total area, a total population, and a list of countries."""
 
     _name: str
-    _land_area: int
-    _population: int
-    _countries: list[Country]
+    _countries: set[Country]
 
     def __init__(self, name: str) -> None:
         self._name = name
-        self._land_area, self._population = 0, 0
-        self._countries = []
+        self._countries = set()
 
     def append(self, country: Country) -> None:
         """Adds a Country to the region."""
-
-        self._countries.append(country)
-
-        # Add the Country's data to the total.
-        self._land_area += country.land_area
-        self._population += country.population
+        self._countries.add(country)
 
     @property
     def name(self) -> str:
         return self._name.lower()
 
     @property
-    def land_area(self) -> int:
-        return self._land_area
+    def land_area(self) -> float:
+        return sum(country.land_area for country in self._countries)
 
     @property
     def population(self) -> int:
-        return self._population
+        return sum(country.population for country in self._countries)
 
     @property
     def countries(self) -> list[Country]:
-        # Return a copy of the list, so that external use doesn't impact internal representation.
+        # Return a list fo the countries, so that external use doesn't impact internal representation.
         # Countries are read-only, so I haven't bothered copying them to prevent tampering.
         return [item for item in self._countries]
 
@@ -181,9 +181,16 @@ class Header:
     def __init__(self, name: str, index: int, type_, validator=None) -> None:
         self._name, self._index, self._type, self._validator = name, index, type_, validator
 
+    def __repr__(self):
+        return f'({self.name}, {self.index}, {self._type.__name__})'
+
     @property
     def name(self) -> str:
         return self._name.lower()
+
+    @property
+    def type(self) -> str:
+        return f'{self._type.__name__}'
 
     @property
     def index(self) -> int:
@@ -271,7 +278,7 @@ class CSVReader:
         self._escape, self._delimiter, self._linebreak = escape, delimiter, linebreak
 
         # Store the headers (the first line in the file) if required
-        self.headers = self.__next__() if headers else None
+        self.headers = [item.lower() for item in self.__next__()] if headers else None
 
     def __iter__(self) -> object:
         return self
@@ -317,7 +324,7 @@ class CSVReader:
 
 
 def round_output(places: int):
-    """Decorator function that rounds the output of a function"""
+    """Decorator function that rounds the output of a function to the specified places."""
     def decorator(func):
         def wrapper(*args, **kwargs):
             def round_through(items) -> [tuple, list, dict]:
@@ -335,6 +342,9 @@ def round_output(places: int):
                     return {key: round_(val) if not is_list(val) else round_through(val) for key, val in dic.items()}
 
                 type_ = type(items)
+                # Attempt to round all the floats within items, recursively searching through the data structure
+                # Dictionary key will not be rounded
+                # Would be much neater if I could use @functools.wraps, but that requires an import
                 return round_list(items) if type_ in (list, tuple) \
                     else round_dict(items) if isinstance(items, dict) \
                     else round_(items)
@@ -345,6 +355,89 @@ def round_output(places: int):
     return decorator
 
 
+def set_type(item: str) -> [int, float, str]:
+    """Takes a string and returns it cast to the most appropriate type."""
+    for type_ in (int, float, str):
+        try:
+            return type_(item)
+        except ValueError:
+            pass
+
+
+def create_headers(*expected: tuple, received: list[str]) -> list[Header]:
+    """Takes expected header data and a list of received headers, and returns a list of header objects."""
+    headers = []
+    for header_data in expected:
+        # Validation may not be given, so used * expression to unpack the remainder of the data without raising an error
+        name, type_, *validation = header_data
+        header = Header(name, received.index(name), type_, validation[0] if validation else None)
+        headers.append(header)
+    return headers
+
+
+def handle_country_data(data, headers: list[Header]) -> list[Region]:
+    """Takes a CSV reader containing country data and returns a list of Regions containing """
+    regions: dict[str, Region] = {}
+    for country in data:
+
+        # Attempt to extract data from the row. If something is missing or invalid, skip it
+        try:
+            extracted = extract_row(row=country, headers=headers)
+        except ValueError:
+            continue
+
+        # Create the country and add it to the correct region. If the region doesn't exist, create it.
+        new_country = Country(*extracted)
+        if new_country.region not in regions:
+            regions[new_country.region] = Region(new_country.region)
+        regions[new_country.region].append(new_country)
+
+    return [region for region in regions.values()]
+
+
+def extract_row(row: list[str], headers: list[Header]) -> list[any]:
+    """Takes a row from a file and the associated Headers, and returns the relevant data from the row in order."""
+    data = []
+    for header in headers:
+        item = set_type(row[header.index])
+        if not header.validate(item):
+            raise ValueError(f'Bad type for {header.name}: got {item}.')
+        data.append(item)
+    return data
+
+
 @round_output(places=4)
-def main():
-    ...
+def main(file: str):
+    with open(file) as csv_file:
+
+        # Creates a csv reader using a buffered stream to prevent reading from the file too frequently
+        csv_file = BufferedStream(csv_file, 1_000)
+        reader = CSVReader(csv_file, headers=True)
+
+        # The following data is used to create header objects. Headers take ('name', type, validator)
+        name = ('country', str)
+        region = ('regions', str)
+        land_area = ('land area', (float, int), (lambda v: v > 0))
+        population = ('population', int, (lambda v: v > 0))
+        net_change = ('net change', int)
+
+        # Create the header objects using the first line of the file and the above data
+        received_headers = reader.headers
+        headers = create_headers(name, region, land_area, population, net_change, received=received_headers)
+
+        # Create a list of regions
+        regions = handle_country_data(data=(line for line in reader), headers=headers)
+
+        # Calculate the relevant data for each region
+        stats, region_data = {}, {}
+        for region in regions:
+            stats[region.name] = [*region.calculate(PopulationStandardError, PopulationAreaSimilarity)]
+            region_data[region.name] = region.calculate(CountryDictionary)
+
+        return stats, region_data
+
+
+if __name__ == '__main__':
+    o1, o2 = main('../Countries.csv')
+    print(o1)
+    print(o2)
